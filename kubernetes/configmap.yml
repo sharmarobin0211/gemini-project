@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gemini-config
+  namespace: gemini-namespace
+data:
+  NEXTAUTH_URL: <enter-your-domain-url> # Enter your NextAuth URL here(Domain name/URL)
