@@ -1,0 +1,174 @@
+pipeline{
+    agent{label : "jenkins-jenkins-agent"}
+
+    environment{
+        SONAR_HOME= tool "sonar-token" 
+        GIT_REPO= "https://github.com/sharmarobin0211/gemini-project.git"
+        BRANCH= "main"
+        TAG= ${BUILD_NUMBER}
+    }
+
+    stages{
+        stage("clean workshop"){
+            steps{
+                cleanWs()
+            }
+        }
+        stage('Checkout from Git'){
+            steps{
+                git branch: ${BRANCH}, url: ${GIT_REPO}
+            }
+        }
+        stage("Sonarqube Analysis "){
+            steps{
+                withSonarQubeEnv('sonar-server') {
+                    sh ''' $SONAR_HOME/bin/sonar-scanner -Dsonar.projectName=GEMINI \
+                    -Dsonar.projectKey=GEMINI '''
+                }
+            }
+        }
+        stage("quality gate"){
+           steps {
+                script {
+                    waitForQualityGate abortPipeline: false, credentialsId: 'sonar-token'
+                }
+            }
+        }
+        stage('OWASP FS SCAN') {
+            steps {
+                dependencyCheck additionalArguments: '--scan ./ --disableYarnAudit --disableNodeAudit', odcInstallation: 'DP-Check'
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            }
+        }
+        stage('TRIVY FS SCAN') {
+            steps {
+                sh "trivy fs . > trivyfs.txt"
+            }
+        }
+        stage("Docker Build & Push"){
+            steps{
+                script{
+                   withDockerRegistry(credentialsId: 'docker', toolName: 'docker'){
+                       sh "docker build -t gemini ."
+                       sh "docker tag zomato sharmarobin/gemini:${TAG} "
+                       sh "docker push sharmarobin/gemini:${TAG} "
+                    }
+                }
+            }
+        }
+        stage("TRIVY"){
+            steps{
+                sh "trivy image sharmarobin/zomato:latest > trivy.txt"
+            }
+        }
+        stage("Cleanup Docker Images") {
+            steps {
+                script {
+                    sh "docker rmi gemini:${TAG} || true"
+                    sh "docker rmi sharmarobin/gemini:${TAG} || true"
+                    sh "docker image prune -f"
+                }
+                echo "Cleaned up Docker image:sharmarobin/gemini:${TAG} ."
+            }
+        }
+        
+    }
+    post {
+        success {
+            archiveArtifacts artifacts: 'kubernetes/gemini-deployment.yml', followSymlinks: false
+            build job: "Gemini-CD", parameters: [
+                string(name: 'GEMINI_DOCKER_TAG', value: "${TAG}")
+            ]
+            echo "Pipeline completed successfully!"
+            emailext (
+                subject: "SUCCESS: Jenkins Pipeline for Gemini",
+                body: """
+                    <div style="font-family: Arial, sans-serif; padding: 20px; border: 2px solid #4CAF50; border-radius: 10px;">
+                        <h2 style="color: #4CAF50;">🎉 Pipeline Execution: SUCCESS 🎉</h2>
+                        <p style="font-size: 16px; color: #333;">
+                            Hello Team,
+                        </p>
+                        <p style="font-size: 16px; color: #333;">
+                            The Jenkins CI pipeline for <strong style="color: #4CAF50;">Gemini</strong> completed <strong style="color: #4CAF50;">successfully</strong>!
+                        </p>
+                        <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                            <tr style="background-color: #f2f2f2;">
+                                <th style="text-align: left; padding: 8px; border: 1px solid #ddd;">Details</th>
+                                <th style="text-align: left; padding: 8px; border: 1px solid #ddd;">Values</th>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; border: 1px solid #ddd;">Git Repository</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">${GIT_REPO}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; border: 1px solid #ddd;">Branch</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">${BRANCH}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; border: 1px solid #ddd;">Docker Image</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">sharma0211kum@gmail.com/gemini:${TAG}</td>
+                            </tr>
+                        </table>
+                        <p style="font-size: 16px; color: #333; margin-top: 20px;">
+                            Visit <a href="" style="color: #4CAF50;">Pipeline Logs</a> for more details.
+                        </p>
+                        <p style="font-size: 16px; color: #333; margin-top: 20px;">
+                            Thanks,<br>
+                            <strong>Jenkins</strong>
+                        </p>
+                    </div>
+                """,
+                to: "sharma0211kum@gmail.com",
+                from: "jenkins@example.com",
+                mimeType: 'text/html',
+                attachmentsPattern: '**/table-report.html'
+            )
+        }
+        failure {
+            echo "Pipeline failed. Please check the logs."
+            emailext (
+                subject: "FAILURE: Jenkins Pipeline for Gemini",
+                body: """
+                    <div style="font-family: Arial, sans-serif; padding: 20px; border: 2px solid #F44336; border-radius: 10px;">
+                        <h2 style="color: #F44336;">🚨 Pipeline Execution: FAILURE 🚨</h2>
+                        <p style="font-size: 16px; color: #333;">
+                            Hello Team,
+                        </p>
+                        <p style="font-size: 16px; color: #333;">
+                            Unfortunately, the Jenkins CI pipeline for <strong style="color: #F44336;">Gemini</strong>-project has <strong style="color: #F44336;">failed</strong>.
+                        </p>
+                        <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                            <tr style="background-color: #f2f2f2;">
+                                <th style="text-align: left; padding: 8px; border: 1px solid #ddd;">Details</th>
+                                <th style="text-align: left; padding: 8px; border: 1px solid #ddd;">Values</th>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; border: 1px solid #ddd;">Git Repository</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">${GIT_REPO}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; border: 1px solid #ddd;">Branch</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">${BRANCH}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 8px; border: 1px solid #ddd;">Docker Image</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">sharma0211kum@gmail.com/gemini:${TAG}</td>
+                            </tr>
+                        </table>
+                        <p style="font-size: 16px; color: #333; margin-top: 20px;">
+                            Visit <a href="" style="color: #F44336;">Pipeline Logs</a> for more details.
+                        </p>
+                        <p style="font-size: 16px; color: #333; margin-top: 20px;">
+                            Thanks,<br>
+                            <strong>Jenkins</strong>
+                        </p>
+                    </div>
+                """,
+                to: "sharma0211kum@gmail.com",
+                from: "jenkins@example.com",
+                mimeType: 'text/html',
+                attachmentsPattern: '**/table-report.html'
+            )
+        }
+    }
+}
