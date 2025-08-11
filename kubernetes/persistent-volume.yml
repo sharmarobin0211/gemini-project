@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-pv
+  namespace: gemini-namespace
+  labels:
+    app: bankapp
+spec:
+  capacity:
+    storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain # Keeps the PV after the PVC is deleted
+  storageClassName: standard # Make sure this matches your cluster's default storage class
+  hostPath:
+    # path: "/tmp/bankapp-mysql" # This will be stored on the host machine running KIND
+    path: /mnt/data/mysql
+    type: DirectoryOrCreate

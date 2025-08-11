@@ -1,0 +1,34 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gemini-ingress
+  namespace: gemini-namespace
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"  # Force HTTPS
+    cert-manager.io/cluster-issuer: letsencrypt-prod  # Use Let's Encrypt
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  tls:
+  - hosts:
+    - 63.34.188.88.nip.io
+    secretName: gemini-tls-secret
+  ingressClassName: nginx
+  rules:
+  - host: 63.34.188.88.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: gemini-service
+            port:
+              number: 3000
+      - path: /nginx
+        pathType: Prefix
+        backend:
+          service:
+            name: nginx-service
+            port:
+              number: 80     
