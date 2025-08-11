@@ -19,7 +19,6 @@ Follow this guide to set up a DevSecOps-ready Google Gemini Clone if you can aff
 
 ## Setting up the Repo and Workspace
 
-- Fork this repo on GitHub: [https://github.com/Amitabh-DevOps/dev-gemini-clone.git](https://github.com/Amitabh-DevOps/dev-gemini-clone.git)
 - Clone the forked repo to your system.
 - Open the project in VSCode or your preferred code editor.
 - Open the integrated terminal in VSCode.
@@ -743,13 +742,3 @@ You are all set—you have successfully completed this Google Gemini Clone proje
 
 This comprehensive configuration establishes a robust DevSecOps workflow ready for production environments.
 
-
-
-#### Watch this video for quick workflow of the DevSecOps in Google Gemini Clone(skip the intro and outro)
-<!--
-   [![Workflow-video](public/assets/gemini-banner.png)](https://youtu.be/CCWsMZtri2I?si=teF9ThDoXBWp_AmO)
--->
-  https://github.com/user-attachments/assets/1f4f2da7-b502-4aca-924e-8063254630cf
-
-
-In case you can not access it, then here is YT video link : https://youtu.be/CCWsMZtri2I?si=teF9ThDoXBWp_AmO
